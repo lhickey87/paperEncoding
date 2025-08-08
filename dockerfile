@@ -1,4 +1,0 @@
-
-FROM 
-
-WORKDIR /paperencoding
