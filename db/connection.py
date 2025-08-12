@@ -1,13 +1,15 @@
 import requests
+import os
 from pymongo import MongoClient
 import time
 import certifi
 
 # --- Configuration ---
-MONGO_URI = "mongodb+srv://hickeyliams:5W6xQi3mqXMaYK0X@papercluster.hytienp.mongodb.net/?retryWrites=true&w=majority&appName=papercluster"
+MONGO_URI = "mongodb+srv://hickeyliams:pass@papercluster.hytienp.mongodb.net/?retryWrites=true&w=majority&appName=papercluster"
 DB_NAME = "research_db"
 COLLECTION_NAME = "papers"
 API_BASE_URL = "https://api.openalex.org/works"
+
 
 # --- Database Connection (Singleton Pattern) ---
 try:
@@ -21,10 +23,6 @@ except Exception as e:
     collection = None
 
 def reconstructAbstract(inverted_index: dict):
-    """
-    Correctly reconstructs the abstract string from OpenAlex's 
-    inverted index format. Handles cases where the abstract is missing.
-    """
     # when paper has no abstract
     if not inverted_index:
         return ""
@@ -45,8 +43,7 @@ def fetchPapers(collection, numPages=10):
     """Fetches and stores papers from the OpenAlex API."""
     params = {
         'per_page': 10,
-        'filter': 'primary_topic.field.id:26', # Mathematics
-        'mailto': "hickey.liams@gmail.com"
+        'filter': 'primary_topic.field.id:26' # Mathematics
     }
     
     for page in range(1, numPages + 1):
@@ -76,8 +73,13 @@ def fetchPapers(collection, numPages=10):
                     "referenced_works": paper.get("referenced_works"),
                     "related_works": paper.get("related_works")
                 }
+                
+                
+                if collection.find_one({"id": paper.get("id")}):
+                    continue 
+
                 papersToInsert.append(simplifiedPaper)
-            
+             
             if papersToInsert:
                 collection.insert_many(papersToInsert, ordered=False)
                 # FIX 4: Corrected print formatting
@@ -98,6 +100,7 @@ def returnPaper(query_filter: dict):
         return None
     try:
         paper = collection.find_one(query_filter)
+        print('entered find_one operation')
         return paper
     except Exception as e:
         print(f"An error occurred during find_one: {e}")
@@ -106,4 +109,5 @@ def returnPaper(query_filter: dict):
 if __name__ == "__main__":
     if collection:
         # FIX 5: Corrected syntax for function call
-        fetchPapers(collection, numPages=10)
+        fetchPapers(collection, numPages=100)
+        

@@ -20,6 +20,7 @@ if search_button:
     else:
         # FIX: Handle both full URL and bare DOI inputs from the user
         user_input = doi_query.strip()
+      
         if "doi.org/" in user_input:
             # User pasted a full URL
             full_doi_url = user_input
@@ -53,6 +54,7 @@ if search_button:
             # Call the backend API to get related works using the bare DOI
             try:
                 response = requests.get(f"{BACKEND_URL}/paper_details/{bare_doi}")
+                print('We have tried')
                 response.raise_for_status()
                 data = response.json()
                 

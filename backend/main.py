@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException
 from db.connection import returnPaper  # Your function to query MongoDB
 import httpx  # A modern, async-friendly requests library
 import asyncio
+import certifi
 
 # Create a FastAPI app instance
 app = FastAPI()
@@ -13,10 +14,10 @@ async def get_paper_details(doi: str):
     # 1. Find the main paper in your local MongoDB
     full_doi_url = f"https://doi.org/{doi}"
     main_paper = returnPaper({'url': full_doi_url})
-
     if not main_paper:
         raise HTTPException(status_code=404, detail="Paper not found in the database.")
     
+    print('ented app.get method from streamlit app')
     paper = {
         "id": main_paper.get("id"),
         "title": main_paper.get("title"),
@@ -25,12 +26,12 @@ async def get_paper_details(doi: str):
         "abstract": main_paper.get("abstract", ""),
         "related_works": main_paper.get("related_works", [])
     }
-
+    print(paper['title'])
     # 2. Asynchronously fetch details for all related works
     related_works_urls = paper.get('related_works', [])
     related_works_details = []
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(verify=certifi.where()) as client:
         # Create a list of tasks to run concurrently
         tasks = []
         for work_url in related_works_urls[:10]: # Limit to 10 for speed
