@@ -1,0 +1,8 @@
+pymongo
+fastapi
+uvicorn
+python-dotenv
+requests
+asyncio
+certifi
+httpx

@@ -1,0 +1,39 @@
+---
+version: "3.8"
+
+services:
+  # The 'frontend', 'backend', and 'database' services are now at the same level
+  frontend:
+    # 'build' should just be the path to the build context
+    build: ./frontend
+    ports:
+      - "8000:8000"
+    # 'depends_on' must refer to the actual service names
+    depends_on:
+      - backend
+      - database
+    volumes:
+      - ./frontend:/app
+      - ./db:/app/db
+
+  backend:
+    build: ./backend
+    ports:
+      - "8501:8501"
+    environment:
+      - DB_NAME=value
+    volumes:
+      - ./backend:/code
+      - ./db:/code/db
+
+  database:
+    image: mongo:4.0-xenial
+    ports:
+      # A space is required after the hyphen to create a list item
+      - "27017:27017"
+    volumes:
+      - research:/data/db
+
+# The top-level 'volumes' key defines the named volume
+volumes:
+  research:
