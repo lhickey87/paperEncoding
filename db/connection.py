@@ -1,15 +1,21 @@
 import requests
 import os
+from dotenv import load_dotenv
 from pymongo import MongoClient
 import time
 import certifi
 
+load_dotenv()
 # --- Configuration ---
-MONGO_URI = "mongodb+srv://hickeyliams:pass@papercluster.hytienp.mongodb.net/?retryWrites=true&w=majority&appName=papercluster"
+MONGO_URI = os.getenv("MONGO_URI")
 DB_NAME = "research_db"
 COLLECTION_NAME = "papers"
 API_BASE_URL = "https://api.openalex.org/works"
 
+if MONGO_URI is None:
+    print("Error: MONGO_URI not found. Make sure you have a .env file with your connection string.")
+    # Exit or handle the error gracefully
+    exit()
 
 # --- Database Connection (Singleton Pattern) ---
 try:
