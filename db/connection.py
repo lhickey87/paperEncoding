@@ -4,9 +4,12 @@ from dotenv import load_dotenv
 from pymongo import MongoClient
 import time
 import certifi
+from pathlib import Path
 
-load_dotenv()
-# --- Configuration ---
+dotenv_path = Path(__file__).resolve().parent.parent / 'container.env'
+load_dotenv(dotenv_path=dotenv_path, override=True)
+
+
 MONGO_URI = os.getenv("MONGO_URI")
 DB_NAME = "research_db"
 COLLECTION_NAME = "papers"
@@ -68,17 +71,19 @@ def fetchPapers(collection, numPages=10):
             # FIX 3: Clear the list for each new page of results
             papersToInsert = []
             for paper in papers:
+                abstract = reconstructAbstract(paper.get("abstract_inverted_index"))
                 simplifiedPaper = {
                     "id": paper.get("id"), 
                     "title": paper.get("title"), 
                     "publication_year": paper.get("publication_year"), 
                     "publication_date": paper.get("publication_date"),
                     "authors": [author['author'].get('display_name') for author in paper.get('authorships', []) if author.get('author')],
-                    "abstract": reconstructAbstract(paper.get("abstract_inverted_index")),
+                    "abstract": abstract,
                     "url": paper.get("doi"),
                     "referenced_works": paper.get("referenced_works"),
                     "related_works": paper.get("related_works")
                 }
+                # simplifiedPaper["Vector"] = embed(abstract)
                 
                 
                 if collection.find_one({"id": paper.get("id")}):
@@ -113,7 +118,9 @@ def returnPaper(query_filter: dict):
         return None
 
 if __name__ == "__main__":
+    # Remove the redundant MONGO_URI = os.getenv("MONGO_URI") line here.
+    # The variable is already defined at the top of the script.
+
     if collection:
-        # FIX 5: Corrected syntax for function call
         fetchPapers(collection, numPages=100)
         
