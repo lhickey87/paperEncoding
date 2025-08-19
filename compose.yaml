@@ -1,39 +1,49 @@
----
-version: "3.8"
 
+# Use a modern syntax without the version attribute
 services:
-  # The 'frontend', 'backend', and 'database' services are now at the same level
+  # The 'frontend' service builds and runs the Streamlit app
   frontend:
-    # 'build' should just be the path to the build context
-    build: ./frontend
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
     ports:
-      - "8000:8000"
-    # 'depends_on' must refer to the actual service names
+      - "8501:8501" # Correct port mapping for Streamlilt
+    env_file:
+      - ./container.env
+    environment:
+      - BACKEND_URL=http://backend:8000
     depends_on:
-      - backend
-      - database
+      - database # Frontend might also need to access the database directly
+    # Volumes are useful for live-reloading during development
     volumes:
       - ./frontend:/app
       - ./db:/app/db
-
+      
+  # The 'backend' service builds and runs the FastAPI/Uvicorn server
   backend:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
     ports:
-      - "8501:8501"
-    environment:
-      - DB_NAME=value
+      - "8000:8000" # Correct port mapping for Uvicorn
+    # Use env_file to inject secrets and config
+    env_file:
+      - ./container.env
+    depends_on:
+      - database # Backend must wait for the database to be ready
+    # Volumes for live-reloading during development
     volumes:
       - ./backend:/code
       - ./db:/code/db
-
+      
+  # The 'database' service uses a pre-built MongoDB image
   database:
     image: mongo:4.0-xenial
     ports:
-      # A space is required after the hyphen to create a list item
       - "27017:27017"
     volumes:
       - research:/data/db
 
-# The top-level 'volumes' key defines the named volume
+# Named volume for persistent database storage
 volumes:
   research:
