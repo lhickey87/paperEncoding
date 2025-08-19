@@ -1,14 +1,17 @@
 import streamlit as st
 from db.connection import returnPaper
 import requests
+import os
 
 st.title("Math Paper Encoder!")
 st.markdown("This allows fellow researchers to look for papers which might be relevant to a current paper they are interested in!")
 
 # --- Configuration ---
-BACKEND_URL = "http://127.0.0.1:8000"
-
+BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:8000")
 # --- Main Search Input ---
+
+print('WE HAVE ENTERED THE CODE FOR THE FRONTEND')
+
 with st.form(key='search_form'):
     doi_query = st.text_input("Enter the DOI of a known Paper (e.g., 10.1098/rspa.1927.0118)")
     search_button = st.form_submit_button(label="Search")

@@ -6,3 +6,6 @@ requests
 asyncio
 certifi
 httpx
+sklearn
+tensorflow_hub
+tensorflow
