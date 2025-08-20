@@ -1,6 +1,9 @@
 import streamlit as st
 from db.connection import returnPaper
+from shared_modules.flowers import create_influence_flower
+import matplotlib.pyplot as plt
 import requests
+import networkx as nx
 import os
 
 st.title("Math Paper Encoder!")
@@ -8,9 +11,7 @@ st.markdown("This allows fellow researchers to look for papers which might be re
 
 # --- Configuration ---
 BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:8000")
-# --- Main Search Input ---
-
-print('WE HAVE ENTERED THE CODE FOR THE FRONTEND')
+# --- Main Search Input --
 
 with st.form(key='search_form'):
     doi_query = st.text_input("Enter the DOI of a known Paper (e.g., 10.1098/rspa.1927.0118)")
@@ -61,8 +62,37 @@ if search_button:
                 response.raise_for_status()
                 data = response.json()
                 
-                related_works = data.get("related_works")
+            
+                related_works = data.get("related_works", [])
 
+                titles = {}
+                count = 0
+                for work in related_works:
+                    titles[work.get('title')] = count +1
+                    count += 1
+                
+                [G,pos] = create_influence_flower(authors[0],titles)
+
+                node_sizes = [G.nodes[n]['size'] for n in G.nodes]
+                node_colors = [G.nodes[n].get('color', 'gray') for n in G.nodes]
+                node_edge_colors = [G.nodes[n].get('edgecolor', 'black') for n in G.nodes]
+
+                fig, ax = plt.subplots(figsize=(12, 12))
+
+                nx.draw_networkx_nodes(G, pos, node_size=node_sizes, node_color=node_colors, edgecolors=node_edge_colors, ax=ax)
+                nx.draw_networkx_labels(G, pos, font_size=10, font_family='sans-serif', font_weight='bold', ax=ax)
+                for u, v, d in G.edges(data=True):
+                    weight = d['weight']
+                    # Use hexadecimal color codes for edge_color
+                    edge_color = "#CD5C5C" if weight > 2 else "#A9CCE3" # Light red (IndianRed) vs. light blue (LightSteelBlue)
+                    nx.draw_networkx_edges(G, pos, edgelist=[(u, v)], width=weight, edge_color=edge_color, alpha=0.7, ax=ax)
+
+                ax.set_facecolor("#F0F2F6") # Light background for the plot area
+                ax.set_xticks([])
+                ax.set_yticks([])
+                plt.tight_layout() 
+
+                st.pyplot(fig)
                 if related_works:
                     for work in related_works:
                         col1, col2 = st.columns([2, 3])
