@@ -18,6 +18,7 @@ services:
     volumes:
       - ./frontend:/app
       - ./db:/app/db
+      - ./shared_modules:/app/shared_modules
       
   # The 'backend' service builds and runs the FastAPI/Uvicorn server
   backend:
@@ -35,7 +36,7 @@ services:
     volumes:
       - ./backend:/code
       - ./db:/code/db
-      
+      - ./shared_modules:/code/shared_modules
   # The 'database' service uses a pre-built MongoDB image
   database:
     image: mongo:4.0-xenial

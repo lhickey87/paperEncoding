@@ -56,3 +56,5 @@ async def get_paper_details(doi: str):
     return {
         "related_works": related_works_details
     }
+
+# @app.get("/flower_details/{doi:path}")
