@@ -118,9 +118,6 @@ def returnPaper(query_filter: dict):
         return None
 
 if __name__ == "__main__":
-    # Remove the redundant MONGO_URI = os.getenv("MONGO_URI") line here.
-    # The variable is already defined at the top of the script.
-
     if collection:
         fetchPapers(collection, numPages=100)
         

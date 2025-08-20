@@ -13,6 +13,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the shared db module and the backend code
 # These paths are relative to the project root (the build context)
 COPY db /code/db
+
+COPY shared_modules /code/shared_modules
 COPY ./backend/. /code/
 
 # Command to run the backend application
