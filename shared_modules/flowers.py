@@ -41,6 +41,27 @@ def create_influence_flower(central_node: str, related_nodes: dict[str, int]):
 
     return [G,pos]
 
+def plot_influence_flower(G, pos:list[int]):
+    node_sizes = [G.nodes[n]['size'] for n in G.nodes]
+    node_colors = [G.nodes[n].get('color', 'gray') for n in G.nodes]
+    node_edge_colors = [G.nodes[n].get('edgecolor', 'black') for n in G.nodes]
+
+    fig, ax = plt.subplots(figsize=(12, 12))
+
+    nx.draw_networkx_nodes(G, pos, node_size=node_sizes, node_color=node_colors, edgecolors=node_edge_colors, ax=ax)
+    nx.draw_networkx_labels(G, pos, font_size=10, font_family='sans-serif', font_weight='bold', ax=ax)
+    for u, v, d in G.edges(data=True):
+        weight = d['weight']
+        # Use hexadecimal color codes for edge_color
+        edge_color = "#CD5C5C" if weight > 2 else "#A9CCE3" # Light red (IndianRed) vs. light blue (LightSteelBlue)
+        nx.draw_networkx_edges(G, pos, edgelist=[(u, v)], width=weight, edge_color=edge_color, alpha=0.7, ax=ax)
+
+    ax.set_facecolor("#F0F2F6") # Light background for the plot area
+    ax.set_xticks([])
+    ax.set_yticks([])
+    plt.tight_layout()
+    return [fig,ax]
+
 
 # def embed(input):
 #   return model(input)
