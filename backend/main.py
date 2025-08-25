@@ -1,6 +1,7 @@
 # Save this code as 'main.py' in your project directory
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from db.connection import returnPaper  # Your function to query MongoDB
 import httpx  # A modern, async-friendly requests library
 import asyncio
@@ -8,6 +9,19 @@ import certifi
 
 # Create a FastAPI app instance
 app = FastAPI()
+
+origins = [
+    "https://paperrank-backend-651365523485.northamerica-northeast2.run.app/",
+    "http://localhost:8501",  # for local testing
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/paper_details/{doi:path}")
 async def get_paper_details(doi: str):
@@ -54,6 +68,7 @@ async def get_paper_details(doi: str):
 
     # 3. Combine and return all the data
     return {
+        "paper" : paper, 
         "related_works": related_works_details
     }
 

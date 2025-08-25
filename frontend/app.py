@@ -6,94 +6,97 @@ import requests
 import networkx as nx
 import os
 
-st.title("Math Paper Encoder!")
-st.markdown("This allows fellow researchers to look for papers which might be relevant to a current paper they are interested in!")
 
-# --- Configuration ---
-BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:8000")
-# --- Main Search Input --
+def get_paper(doi: str, backend_url: str):
+    try:
+        response = requests.get(f"{backend_url}/paper_details/{bare_doi}")
+        print('We have tried')
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        st.error(f"Could Not connect to backend: {e}") 
+        return {} 
 
-with st.form(key='search_form'):
-    doi_query = st.text_input("Enter the DOI of a known Paper (e.g., 10.1098/rspa.1927.0118)")
-    search_button = st.form_submit_button(label="Search")
+def doi_strip(doi_query: str):
+    user_input = doi_query.strip()
+    if "doi.org/" in user_input:
+        # User pasted a full URL
+        bare_doi = user_input.split("doi.org/")[-1]
+        return bare_doi
+    return bare_doi
 
-# --- Logic to run ONLY when the search button is clicked ---
-if search_button:
-    if not doi_query:
-        st.warning("Please enter a DOI to search.")
-    else:
-        # FIX: Handle both full URL and bare DOI inputs from the user
-        user_input = doi_query.strip()
-      
-        if "doi.org/" in user_input:
-            # User pasted a full URL
-            full_doi_url = user_input
-            bare_doi = user_input.split("doi.org/")[-1]
-        else:
-            # User pasted just the DOI
-            bare_doi = user_input
-            full_doi_url = f"https://doi.org/{bare_doi}"
+def get_paper_details(paper_details: dict):
+    paper = paper_details.get("paper")
+    st.success("paper found!")
+    st.subheader(paper.get("title", "no title found"))
+    
+    authors = paper.get("authors", [])
+    if authors:
+        st.write(f"**authors:** {', '.join(authors)}")
+    
+    st.write(f"**publication year:** {paper.get('publication_year', 'n/a')}")
+    
+    with st.expander("view abstract"):
+        st.write(paper.get("abstract", "no abstract available."))
+
+    st.divider()
+    st.subheader("related works")
+
+def get_related_works(paper_data: dict):
+    """displays the related works and influence flower."""
+    st.divider()
+    st.subheader("related works")
+    
+    related_works = paper_data.get("related_works", [])
+    if related_works:
+        titles = {}
+        for count, work in enumerate(related_works):
+            titles[work.get('title')] = count + 1
         
-        # Query the database using the full URL
-        with st.spinner("Searching for paper..."):
-            paper = returnPaper({"url": full_doi_url})
-
-        # --- Display the results ---
-        if paper:
-            st.success("Paper Found!")
-            st.subheader(paper.get("title", "No Title Found"))
-            
-            authors = paper.get("authors", [])
-            if authors:
-                st.write(f"**Authors:** {', '.join(authors)}")
-            
-            st.write(f"**Publication Year:** {paper.get('publication_year', 'N/A')}")
-            
-            with st.expander("View Abstract"):
-                st.write(paper.get("abstract", "No abstract available."))
-
-            st.divider()
-            st.subheader("Related Works")
-
-            # Call the backend API to get related works using the bare DOI
-            try:
-                response = requests.get(f"{BACKEND_URL}/paper_details/{bare_doi}")
-                print('We have tried')
-                response.raise_for_status()
-                data = response.json()
-                
-            
-                related_works = data.get("related_works", [])
-
-                titles = {}
-                count = 0
-                for work in related_works:
-                    titles[work.get('title')] = count +1
-                    count += 1
-                
-                [G,pos] = create_influence_flower(authors[0],titles)
-
-                fig,ax = plot_influence_flower(G,pos)
-
-                st.pyplot(fig)
-                if related_works:
-                    for work in related_works:
-                        col1, col2 = st.columns([2, 3])
-                        with col1:
-                            st.write(f"**Related Title:** {work.get('title')}")
-                        with col2:
-                            st.write(f"**Related DOI:** {work.get('doi')}")
-                else:
-                    st.info("No related works found for this paper.")
-
-            except requests.exceptions.RequestException as e:
-                st.error(f"Could not connect to the backend. Is it running? Error: {e}")
-
+        # assuming the first author from the main paper is used for the flower
+        main_authors = paper_data.get("authors", [])
+        if main_authors:
+            g, pos = create_influence_flower(main_authors[0], titles)
+            fig, ax = plot_influence_flower(g, pos) # assuming this returns fig, ax
+            st.pyplot(fig)
         else:
-            st.error(f"No paper found in the database with the DOI: {doi_query}")
+            st.info("cannot generate influence flower without author information.")
 
-# --- Sidebar with Filters (for a future feature) ---
-st.sidebar.header("Find Similar Papers (Filters)")
-years = st.sidebar.slider("Select Publication Year Range", 1990, 2025, (2015, 2025))
-authName = st.sidebar.text_input("Author Name")
-# ... (rest of your filter code)
+        for work in related_works:
+            col1, col2 = st.columns([2, 3])
+            with col1:
+                st.write(f"**related title:** {work.get('title')}")
+            with col2:
+                st.write(f"**related doi:** {work.get('doi')}")
+    else:
+        st.info("no related works found for this paper.")
+
+# --- logic to run only when the search button is clicked ---
+if __name__ == "__main__":
+    st.title("math paper encoder!")
+    st.markdown("this allows fellow researchers to look for papers which might be relevant to a current paper they are interested in!")
+
+    backend_url = os.getenv("backend_url", "https://paperrank-backend-651365523485.northamerica-northeast2.run.app")
+    with st.form(key='search_form'):
+        doi_query = st.text_input("enter the doi of a known paper (e.g., 10.1098/rspa.1927.0118)")
+        search_button = st.form_submit_button(label="search")
+
+    # --- logic to run only when the search button is clicked ---
+    if search_button:
+        if not doi_query:
+            st.warning("please enter a doi to search.")
+        else:
+            bare_doi = doi_strip(doi_query)
+            paper_data = get_paper(bare_doi, backend_url)
+
+            if paper_data and paper_data.get("paper"):
+                get_paper_details(paper_data)
+                get_related_works(paper_data)
+            else:
+                st.error(f"No paper found in the database with the DOI: {doi_query} or backend error.")
+
+    # --- Sidebar with Filters (for a future feature) ---
+    st.sidebar.header("Find Similar Papers (Filters)")
+    years = st.sidebar.slider("Select Publication Year Range", 1990, 2025, (2015, 2025))
+    authName = st.sidebar.text_input("Author Name")
+
