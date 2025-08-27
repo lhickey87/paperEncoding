@@ -68,7 +68,7 @@ async def get_paper_details(doi: str):
 
     # 3. Combine and return all the data
     return {
-        "paper" : paper, 
+        "paper": paper, 
         "related_works": related_works_details
     }
 
