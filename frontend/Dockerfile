@@ -6,8 +6,6 @@ WORKDIR /app
 COPY ./frontend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY db /app/db
-
 COPY /shared_modules /app/shared_modules
 
 COPY ./frontend/. /app/
