@@ -33,7 +33,7 @@ def get_paper_details(paper_data: dict):
     if authors:
         st.write(f"**authors:** {', '.join(authors)}")
     
-    st.write(f"**publication year:** {paper.get('publication_year', 'n/a')}")
+    # st.write(f"**publication year:** {paper.get('publication_year', 'n/a')}")
     
     with st.expander("view abstract"):
         st.write(paper.get("abstract", "no abstract available."))
@@ -60,10 +60,12 @@ def get_related_works(paper_data: dict):
             st.info("cannot generate influence flower without author information.")
 
         for work in related_works:
-            col1, col2 = st.columns([2, 3])
+            col1, col2, col3 = st.columns([2, 3, 4])
             with col1:
-                st.write(f"**related title:** {work.get('title')}")
+                st.write(f"**created date:** {work.get('created_date')}")
             with col2:
+                st.write(f"**title:** {work.get('title')}")
+            with col3:
                 st.write(f"**related doi:** {work.get('doi')}")
     else:
         st.info("no related works found for this paper.")
@@ -73,7 +75,8 @@ if __name__ == "__main__":
     st.title("Welcome to paperRank!")
     st.markdown("this allows fellow researchers to look for papers which might be relevant to a current paper they are interested in!")
 
-    backend_url = os.getenv("backend_url", "https://paperrank-backend-651365523485.northamerica-northeast2.run.app/")
+    backend_url = os.getenv("BACKEND_URL")
+    st.text(f"Here is the backend url {backend_url}")
     with st.form(key='search_form'):
         doi_query = st.text_input("enter the doi of a known paper (e.g., 10.1098/rspa.1927.0118)")
         search_button = st.form_submit_button(label="search")
@@ -86,11 +89,6 @@ if __name__ == "__main__":
             doi = doi_strip(doi_query)
             st.title(f"")
             paper_data = get_paper(doi, backend_url)
-            if not paper_data:
-                st.error("NOT EVENE THE PAPER WAS READ")
-
-            if not paper_data.get("paper"):
-                st.error("THE ISSUE LIES HERE")
 
             if paper_data and paper_data.get("paper"):
                 get_paper_details(paper_data)
