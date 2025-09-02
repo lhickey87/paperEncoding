@@ -11,13 +11,12 @@ services:
     env_file:
       - ./container.env
     environment:
-      - BACKEND_URL=http://backend:8000
+      - BACKEND_URL=https://paperrank-backend-651365523485.us-east1.run.app
     depends_on:
       - database # Frontend might also need to access the database directly
     # Volumes are useful for live-reloading during development
     volumes:
       - ./frontend:/app
-      - ./db:/app/db
       - ./shared_modules:/app/shared_modules
       
   # The 'backend' service builds and runs the FastAPI/Uvicorn server
@@ -33,8 +32,11 @@ services:
     depends_on:
       - database # Backend must wait for the database to be ready
     # Volumes for live-reloading during development
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/code/sec/hazel-quanta-470113-h4-74f3d204f7b1.json
     volumes:
       - ./backend:/code
+      - ./sec:/code/sec
       - ./db:/code/db
       - ./shared_modules:/code/shared_modules
   # The 'database' service uses a pre-built MongoDB image

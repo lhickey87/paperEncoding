@@ -2,7 +2,8 @@
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from db.connection import returnPaper  # Your function to query MongoDB
+from db.query import doiEntered
+# from db.connection import returnPaper  # Your function to query MongoDB
 import httpx  # A modern, async-friendly requests library
 import asyncio
 import certifi
@@ -26,8 +27,9 @@ app.add_middleware(
 @app.get("/paper_details/{doi:path}")
 async def get_paper_details(doi: str):
     # 1. Find the main paper in your local MongoDB
-    full_doi_url = f"https://doi.org/{doi}"
-    main_paper = returnPaper({'url': full_doi_url})
+    # full_doi_url = f"https://doi.org/{doi}"
+    main_paper = doiEntered(doi)
+    # This needs doiEntered as well
     if not main_paper:
         raise HTTPException(status_code=404, detail="Paper not found in the database.")
     
@@ -35,8 +37,8 @@ async def get_paper_details(doi: str):
     paper = {
         "id": main_paper.get("id"),
         "title": main_paper.get("title"),
-        "publication_year": main_paper.get("publication_year"),
-        "authors": main_paper.get("authors", []),
+        "created_date": main_paper.get("created_date"),
+        "authors": main_paper.get("author_names", []),
         "abstract": main_paper.get("abstract", ""),
         "related_works": main_paper.get("related_works", [])
     }
@@ -63,7 +65,8 @@ async def get_paper_details(doi: str):
                     print(work_data.get('doi'))
                     related_works_details.append({
                         "title": work_data.get('title', 'Title not found'),
-                        "doi": work_data.get('doi', 'DOI not found')
+                        "doi": work_data.get('doi', 'DOI not found'),
+                        'publication_year': work_data.get('publication_year')
                     })
 
     # 3. Combine and return all the data
