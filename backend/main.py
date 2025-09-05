@@ -12,7 +12,7 @@ import certifi
 app = FastAPI()
 
 origins = [
-    "https://paperrank-backend-651365523485.northamerica-northeast2.run.app/",
+    "https://paperrank-backend-651365523485.us-east1.run.app/",
     "http://localhost:8501",  # for local testing
 ]
 
@@ -37,8 +37,13 @@ async def get_paper_details(doi: str):
     paper = {
         "id": main_paper.get("id"),
         "title": main_paper.get("title"),
+        "author_ids": main_paper.get('author_ids'),
+        "referenced_works": main_paper.get('referenced_works'),
+        "oa_url": main_paper.get('oa_url'),
+        "oa_status":main_paper.get('oa_status'),
+        "cited_by_count":main_paper.get("cited_by_count"),
         "created_date": main_paper.get("created_date"),
-        "authors": main_paper.get("author_names", []),
+        "authors": main_paper.get("authors", []),
         "abstract": main_paper.get("abstract", ""),
         "related_works": main_paper.get("related_works", [])
     }
