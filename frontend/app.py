@@ -1,6 +1,7 @@
 import streamlit as st
 from shared_modules.flowers import create_influence_flower, plot_influence_flower
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 import requests
 import networkx as nx
 import os
@@ -15,6 +16,58 @@ def get_paper(doi: str, backend_url: str):
     except requests.exceptions.RequestException as e:
         st.error(f"Could Not connect to backend: {e}") 
         return {} 
+    
+def plotly_test():
+    papers_data = [
+        {
+            'id': 'ID_1', 
+            'title': 'The Impact of AI on Data Engineering', 
+            'cited_by_count': 500,
+            'subject_area': 'AI'
+        },
+        {
+            'id': 'ID_2', 
+            'title': 'A Novel Approach to Network Graph Visualization', 
+            'cited_by_count': 1500,
+            'subject_area': 'Visualization'
+        },
+        {
+            'id': 'ID_3', 
+            'title': 'Machine Learning in Large-Scale Systems', 
+            'cited_by_count': 750,
+            'subject_area': 'AI'
+        }
+    ]
+
+# Extract data into separate lists for Plotly
+    paper_titles = [paper['title'] for paper in papers_data]
+    cited_by_counts = [paper['cited_by_count'] for paper in papers_data]
+    subject_areas = [paper['subject_area'] for paper in papers_data]
+    paper_ids = [paper['id'] for paper in papers_data]
+
+    # Create the scatter plot
+    fig = go.Figure(data=go.Scatter(
+        x=paper_ids,
+        y=cited_by_counts,
+        mode='markers',
+        marker=dict(
+            size=cited_by_counts,  # Node size based on cited count
+            sizemode='area',
+            sizeref=2. * max(cited_by_counts) / (40. ** 2), # Scale for visual appeal
+            sizemin=4
+        ),
+        hovertext=paper_titles,
+        hovertemplate="<b>%{hovertext}</b><br><br>Cited by: %{y}<br>ID: %{x}<extra></extra>"
+    ))
+
+    fig.update_layout(
+        title='Paper Influence Visualization',
+        xaxis_title='Paper ID',
+        yaxis_title='Cited By Count',
+        showlegend=False
+    )
+
+    return fig
 
 def doi_strip(doi_query: str):
     user_input = doi_query.strip()
@@ -83,6 +136,8 @@ if __name__ == "__main__":
 
     # --- logic to run only when the search button is clicked ---
     if search_button:
+        fig = plotly_test()
+        st.plotly_chart(fig,use_container_wdith=True)
         if not doi_query:
             st.warning("please enter a doi to search.")
         else:

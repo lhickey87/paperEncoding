@@ -3,6 +3,7 @@ pydeck
 requests
 python-dotenv
 pymongo
+plotly
 certifi
 networkx
 matplotlib
