@@ -13,10 +13,3 @@ def embed(input):
 
 def toVector(vec):
    return vec.numpy().tolist()
-
-def compute_similarity_score(vec1: list, vec2: list):
-    dot = np.dot(vec1,vec2)
-    mag1 = np.dot(vec1,vec1)
-    mag2 = np.dot(vec2,vec2)
-    return dot/(mag1*mag2)
-    
