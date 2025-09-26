@@ -9,7 +9,6 @@ class ProcessOpenAlexRecord(beam.DoFn):
         try:
             data = json.loads(in_json_string)
 
-            # Apply filters in a performance-friendly order
             pType = data.get('type')
             if pType not in ['article', 'preprint']:
                 logging.warning(f"Skipping non-article/preprint type: {pType}")
@@ -57,8 +56,6 @@ class ProcessOpenAlexRecord(beam.DoFn):
 
             yield record
 
-        except json.JSONDecodeError as e:
-            logging.error(f"Error decoding JSON record: {e}")
         except Exception as e:
             logging.error(f"Error processing record: {e}")
 
@@ -75,8 +72,6 @@ class ProcessOpenAlexRecord(beam.DoFn):
         except Exception as e:
             return "" 
 
-# Define the BigQuery schema (important to match your target table)
-# This schema now strictly matches the BigQuery table schema from your screenshot
 BIGQUERY_SCHEMA = {
     'fields': [
         {'name': 'abstract', 'type': 'STRING', 'mode': 'NULLABLE'},
@@ -103,45 +98,36 @@ BIGQUERY_SCHEMA = {
 }
 
 def run():
-    parser = argparse.ArgumentParser(description="Dataflow pipeline to load compressed JSON from GCS to BigQuery.")
+    parser = argparse.ArgumentParser()
     parser.add_argument(
         '--input_gcs_path',
-        default='gs://paperrank/data/works/updated_date=*/*.gz', 
-        help='Path to the input compressed JSON file(s) in GCS (e.g., gs://your-bucket/data/*.json.gz)')
+        default='gs://paperrank/data/works/updated_date=*/*.gz') 
     parser.add_argument(
         '--output_bigquery_table',
-        required=True,
-        help='BigQuery table to write to (e.g., project_id:dataset.table_name)')
+        required=True
+        )
     parser.add_argument(
         '--temp_location',
-        required=True,
-        help='Cloud Storage location for temporary files (e.g., gs://your-bucket/temp)')
+        required=True
+        )
     parser.add_argument(
         '--staging_location',
-        required=True,
-        help='Cloud Storage location for staging files (e.g., gs://your-bucket/staging)')
+        required=True
+        )
     parser.add_argument(
         '--project',
-        required=True,
-        help='Your Google Cloud project ID')
+        required=True
+        )
     parser.add_argument(
         '--worker_machine_type',
-        required = True,
-        help = 'Worker Machine type'
-    )
+        required = True
+        )
     parser.add_argument(
         '--region',
-        default='us-east1',
-        help='Google Cloud region for Dataflow job')
+        default='us-east1')
     parser.add_argument(
         '--runner',
-        default='DataflowRunner',
-        help='The pipeline runner to use (e.g., DirectRunner, DataflowRunner)')
-    parser.add_argument(
-        '--disk_size_gb',
-        type=int,
-        default=250,
-        help='Worker disk size in GB.')
+        default='DataflowRunner')
 
     known_args, beam_args = parser.parse_known_args()
 
@@ -161,9 +147,7 @@ def run():
     with beam.Pipeline(options=pipeline_options) as p:
         lines = p | 'ReadFromGCS' >> beam.io.ReadFromText(known_args.input_gcs_path)
 
-        transformed_records = (
-            lines
-            | 'ProcessRecords' >> beam.ParDo(ProcessOpenAlexRecord())
+        transformed_records = (lines | 'ProcessRecords' >> beam.ParDo(ProcessOpenAlexRecord())
         )
 
         transformed_records | 'WriteToBigQuery' >> beam.io.WriteToBigQuery(

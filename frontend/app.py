@@ -1,73 +1,55 @@
 import streamlit as st
-from shared_modules.flowers import create_influence_flower, plot_influence_flower
-import matplotlib.pyplot as plt
 import plotly.graph_objects as go
-import requests
-import networkx as nx
 import os
+import requests
+# Set the page configuration for a wide layout
+st.set_page_config(layout="wide", page_title="PaperRank")
 
+# Initialize session state
+if 'show_flower' not in st.session_state:
+    st.session_state.show_flower = False
+if 'selected_paper' not in st.session_state:
+    st.session_state.selected_paper = None
+if 'selected_doi' not in st.session_state:
+    st.session_state.selected_doi = None
 
-def get_paper(doi: str, backend_url: str):
+backend_url = os.getenv("BACKEND_URL")
+
+def get_paper(doi: str):
     try:
         response = requests.get(f"{backend_url}/paper_details/{doi}")
-        print('We have tried')
         response.raise_for_status()
         return response.json()
-    except requests.exceptions.RequestException as e:
-        st.error(f"Could Not connect to backend: {e}") 
-        return {} 
+    except Exception as e:
+        st.error(f"Error retrieving paper: {e}")
+        return None
+
+def get_reccomendations(doi: str):
+    try:
+        response = requests.get(f"{backend_url}/vector_search/{doi}")
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 404:
+            st.warning("No papers found with that DOI.")
+            return []
+        else:
+            st.error(f"Error retrieving recommendations: {e}")
+            return []
     
-def plotly_test():
-    papers_data = [
-        {
-            'id': 'ID_1', 
-            'title': 'The Impact of AI on Data Engineering', 
-            'cited_by_count': 500,
-            'subject_area': 'AI'
-        },
-        {
-            'id': 'ID_2', 
-            'title': 'A Novel Approach to Network Graph Visualization', 
-            'cited_by_count': 1500,
-            'subject_area': 'Visualization'
-        },
-        {
-            'id': 'ID_3', 
-            'title': 'Machine Learning in Large-Scale Systems', 
-            'cited_by_count': 750,
-            'subject_area': 'AI'
-        }
-    ]
 
-# Extract data into separate lists for Plotly
-    paper_titles = [paper['title'] for paper in papers_data]
-    cited_by_counts = [paper['cited_by_count'] for paper in papers_data]
-    subject_areas = [paper['subject_area'] for paper in papers_data]
-    paper_ids = [paper['id'] for paper in papers_data]
-
-    # Create the scatter plot
-    fig = go.Figure(data=go.Scatter(
-        x=paper_ids,
-        y=cited_by_counts,
-        mode='markers',
-        marker=dict(
-            size=cited_by_counts,  # Node size based on cited count
-            sizemode='area',
-            sizeref=2. * max(cited_by_counts) / (40. ** 2), # Scale for visual appeal
-            sizemin=4
-        ),
-        hovertext=paper_titles,
-        hovertemplate="<b>%{hovertext}</b><br><br>Cited by: %{y}<br>ID: %{x}<extra></extra>"
-    ))
-
-    fig.update_layout(
-        title='Paper Influence Visualization',
-        xaxis_title='Paper ID',
-        yaxis_title='Cited By Count',
-        showlegend=False
-    )
-
-    return fig
+def get_titled_paper(title: str):
+    try:
+        response = requests.get(f"{backend_url}/titled_paper/{title}")
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 404:
+            st.warning("No papers found matching that title.")
+            return []
+        else:
+            st.error(f"Error searching for papers: {e}")
+            return []
 
 def doi_strip(doi_query: str):
     user_input = doi_query.strip()
@@ -77,82 +59,200 @@ def doi_strip(doi_query: str):
         return bare_doi
     return user_input
 
-def get_paper_details(paper_data: dict):
-    paper = paper_data.get("paper")
-    st.success("paper found!")
-    st.subheader(paper.get("title", "no title found"))
-    
-    authors = paper.get("authors", [])
-    if authors:
-        st.write(f"**authors:** {', '.join(authors)}")
-    
-    # st.write(f"**publication year:** {paper.get('publication_year', 'n/a')}")
-    
-    with st.expander("view abstract"):
-        st.write(paper.get("abstract", "no abstract available."))
+# Sidebar navigation
+st.sidebar.title("PaperRank")
+st.sidebar.markdown("---")
+page = st.sidebar.selectbox(
+    "Choose a page",
+    ["🔍 Find Papers", "🎯 Get Recommendations", "Author Spotlight"]
+)
 
-
-def get_related_works(paper_data: dict):
-    """displays the related works and influence flower."""
-    st.divider()
-    st.subheader("related works")
+# Page 1: Find Papers
+if page == "🔍 Find Papers":
+    st.title("🔍 Find Academic Papers")
+    st.markdown("Search for papers by title, author, or keywords to find their DOI")
     
-    related_works = paper_data.get("related_works", [])
-    if related_works:
-        titles = {}
-        for count, work in enumerate(related_works):
-            titles[work.get('title')] = count + 1
+    # Search interface
+    col1, col2 = st.columns([3, 1])
+    
+    with col1:
+        search_query = st.text_input(
+            "Search for papers",
+            placeholder="Enter title, author name, or keywords...",
+            help="Try searching for: 'deep learning mobile devices' or 'John Smith neural networks'"
+        )
         
-        # assuming the first author from the main paper is used for the flower
-        main_authors = paper_data.get("paper").get("authors", [])
-        if main_authors:
-            g, pos = create_influence_flower(main_authors[0], titles)
-            fig, ax = plot_influence_flower(g, pos) # assuming this returns fig, ax
-            st.pyplot(fig)
-        else:
-            st.info("cannot generate influence flower without author information.")
+    
+    with col2:
+        st.markdown("<br>", unsafe_allow_html=True)  # Add spacing
+        search_button = st.button("🔍 Search", type="primary")
 
-        for work in related_works:
-            col1, col2, col3 = st.columns([2, 3, 4])
-            with col1:
-                st.write(f"**created date:** {work.get('created_date')}")
-            with col2:
-                st.write(f"**title:** {work.get('title')}")
-            with col3:
-                st.write(f"**related doi:** {work.get('doi')}")
+    # Advanced search options
+    with st.expander("🔧 Advanced Search Options"):
+        col3, col4, col5 = st.columns(3)
+        
+        with col3:
+            year_filter = st.slider("Publication Year", 2000, 2024, (2020, 2024))
+            
+        with col4:
+            venue_filter = st.selectbox(
+                "Publication Venue",
+                ["All", "IEEE", "ACM", "Nature", "Science", "arXiv", "Springer"]
+            )
+            
+        with col5:
+            field_filter = st.selectbox(
+                "Field of Study",
+                ["All", "Computer Science", "Engineering", "Biology", "Physics", "Mathematics"]
+            )
+    
+    # Sample search results
+    if search_query and search_button:
+        st.markdown("---")
+        st.subheader("📚 Search Results")
+
+        papers = get_titled_paper(search_query)
+       
+        # Display results with better formatting
+        for paper in papers:
+            with st.container():
+                col_main, col_button = st.columns([0.85, 0.15])
+                
+                with col_main:
+                    st.markdown(f"""
+                    <div style="padding: 15px; border-left: 4px solid #1f77b4; margin-bottom: 10px; background-color: #f8f9fa;">
+                        <h4 style="margin: 0 0 8px 0; color: #1f77b4;">{paper['title']}</h4>
+                        <p style="margin: 5px 0; color: #666;"><strong>Authors:</strong> {paper['authors']}</p>
+                        <p style="margin: 5px 0; font-family: monospace; font-size: 0.9em; color: #333;"><strong>DOI:</strong> {paper['doi']}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col_button:
+                    st.markdown("<br><br>", unsafe_allow_html=True)  # Spacing
+                    if st.button("Use This Paper", key=f"select_{paper['doi']}", type="secondary"):
+                        st.session_state.selected_doi = paper['doi']
+                        st.success(f"Selected: {paper['title']}")
+                        st.info("💡 Now go to 'Get Recommendations' to find related papers!")
+
+# Page 2: Get Recommendations
+elif page == "🎯 Get Recommendations":
+    st.title("🎯 Get Paper Recommendations")
+    
+    # Check if DOI was selected from previous page
+    if st.session_state.selected_doi:
+        st.success(f"✅ Using selected paper with DOI: {st.session_state.selected_doi}")
+        default_doi = st.session_state.selected_doi
     else:
-        st.info("no related works found for this paper.")
-
-# --- logic to run only when the search button is clicked ---
-if __name__ == "__main__":
-    st.title("Welcome to paperRank!")
-    st.markdown("this allows fellow researchers to look for papers which might be relevant to a current paper they are interested in!")
-
-    backend_url = os.getenv("BACKEND_URL")
-    st.text(f"Here is the backend url {backend_url}")
-    with st.form(key='search_form'):
-        doi_query = st.text_input("enter the doi of a known paper (e.g., 10.1098/rspa.1927.0118)")
-        search_button = st.form_submit_button(label="search")
-
-    # --- logic to run only when the search button is clicked ---
-    if search_button:
-        fig = plotly_test()
-        st.plotly_chart(fig,use_container_wdith=True)
-        if not doi_query:
-            st.warning("please enter a doi to search.")
+        default_doi = "10.1109/TNNLS.2023.3340570"
+    
+    st.markdown("Enter a paper's DOI to find related research papers")
+    
+    # DOI input
+    col1, col2, col3 = st.columns([0.5, 0.3, 0.2])
+    
+    with col1:
+        doi_input = st.text_input(
+            "Paper DOI",
+            help="Enter the DOI of the paper you want to find recommendations for"
+        )
+        if doi_input:
+            doi = doi_strip(doi_input)
+            paper_data = get_paper(doi)
+            if not paper_data:
+                st.error(f"No paper found in the database with the DOI: {doi_input} or backend error.")
         else:
-            doi = doi_strip(doi_query)
-            st.title(f"")
-            paper_data = get_paper(doi, backend_url)
+            st.error(f"Please enter a doi")
+    
+    with col2:
+        search_button = st.button("🔍 Find Recommendations", type="primary")
+    
+    with col3:
+        if st.button("Clear Selection"):
+            st.session_state.selected_doi = None
+            st.rerun()
+    
+    # Filters section
+    with st.expander("🎛️ Recommendation Filters"):
+        col4, col5, col6 = st.columns(3)
+        
+        with col4:
+            year_range = st.slider("Publication Year Range", 1950, 2025, (2020, 2025))
+            similarity_threshold = st.slider("Minimum Similarity", 0.0, 1.0, 0.7, 0.05)
+        
+        with col5:
+            field_filter = st.selectbox("Field of Study", ["All", "Computer Science", "Engineering", "Biology", "Physics"])
+            paper_type = st.multiselect("Paper Type", ["Journal", "Conference", "Preprint"], default=["Journal", "Conference"])
+        
+        with col6:
+            max_results = st.number_input("Max Results", min_value=5, max_value=50, value=10)
+            keywords = st.text_input("Additional Keywords", placeholder="Optional: neural networks, mobile...")
+    
+    # Show recommendations
+    if search_button:
+        st.markdown("---")
+        st.subheader("📋 Related Papers")
 
-            if paper_data and paper_data.get("paper"):
-                get_paper_details(paper_data)
-                get_related_works(paper_data)
-            else:
-                st.error(f"No paper found in the database with the DOI: {doi_query} or backend error.")
+        recommendations = get_reccomendations(paper_data['doi']) #this will return a list of papers by similarity score 
+        
+        for paper in recommendations:
+            with st.container():
+                col_content, col_actions = st.columns([0.8, 0.2])
+                
+                with col_content:
+                    # Color code similarity score
+                    similarity_score = 1 - paper['distance']  # Convert distance to similarity
 
-    # --- Sidebar with Filters (for a future feature) ---
-    st.sidebar.header("Find Similar Papers (Filters)")
-    years = st.sidebar.slider("Select Publication Year Range", 1990, 2025, (2015, 2025))
-    authName = st.sidebar.text_input("Author Name")
+                    if similarity_score >= 0.9:
+                        score_color = "#28a745"  # Green
+                    elif similarity_score >= 0.8:
+                        score_color = "#ffc107"  # Yellow  
+                    else:
+                        score_color = "#fd7e14"  # Orange 
+                                        
+                    st.markdown(f"""
+                    <div style="padding: 20px; border: 1px solid #dee2e6; border-radius: 8px; margin-bottom: 15px; background-color: white;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                            <h4 style="margin: 0; color: #495057; flex: 1;">{paper['title']}</h4>
+                            <span style="font-weight: bold; font-size: 1.4em; color: {score_color}; margin-left: 15px;">
+                                {int(paper['distance'] * 100)}%
+                            </span>
+                        </div>
+                        <p style="margin: 8px 0; color: #6c757d;"><strong>Authors:</strong> {paper['authors']}</p>
+                        <p style="margin: 8px 0; font-family: monospace; font-size: 0.9em; color: #495057;"><strong>DOI:</strong> {paper['doi']}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
 
+                col_actions = st.columns([1, 1, 3]) 
+                with col_actions:
+                    with col_actions[0]:
+                        if st.button("🌸 View Network", key=f"network_{paper.get('doi', '')}", help="View citation network"):
+                            st.session_state.show_flower = True
+                            st.session_state.selected_paper = paper
+                    with col_actions[1]:
+                        st.link_button("🔗 Open Paper", url=paper.get('oa_url', '#'), help="Open paper link in a new tab")
+        
+        # Show influence network if requested
+        if st.session_state.show_flower and st.session_state.selected_paper is not None:
+            st.markdown("---")
+            with st.container():
+                # display_influence_flower(st.session_state.selected_paper)
+                
+                col_close, _, _ = st.columns([0.2, 0.4, 0.4])
+                with col_close:
+                    if st.button("✖️ Close Network"):
+                        st.session_state.show_flower = False
+                        st.rerun()
+
+# Sidebar info
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 💡 How to Use")
+st.sidebar.markdown("""
+1. **Find Papers**: Search for papers by title, author, or keywords
+2. **Get DOI**: Select a paper from search results
+3. **Get Recommendations**: Use the DOI to find related papers
+4. **Explore Networks**: View citation relationships
+""")
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 📊 Stats")
+st.sidebar.metric("Papers Indexed", "19.8M")

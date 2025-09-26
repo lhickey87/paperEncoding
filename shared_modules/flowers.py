@@ -6,73 +6,82 @@ import numpy as np
 # import model.py
 # from model.py import toVector, compute_similarity_score
 
-def create_influence_flower(central_node: str, related_nodes: dict[str, int]):
-    G = nx.Graph()
+def display_influence_flower(paper_details):
+    st.subheader(f"Influence Network for: {paper_details['Title']}")
 
-    # Add the central node with a base size and color
-    G.add_node(central_node, size=2000, color='white', edgecolor='black')
+    # Create mock data for the graph
+    nodes_data = [
+        {'id': 0, 'name': paper_details['Title'], 'label': 'Current Paper', 'group': 'core'},
+    ]
+    edges_data = []
 
-    sorted_nodes = sorted(related_nodes.items(), key=lambda item: item[1], reverse=True)
-    pos = {central_node: (0, 0)}
-    num_nodes = len(sorted_nodes)
-    start_angle = np.pi
-    end_angle = 0
+    # Add mock papers
+    mock_papers = [
+        {'id': 1, 'name': 'Energy-Efficient Inference for CNNs', 'label': 'Citing Paper', 'group': 'citing'},
+        {'id': 2, 'name': 'Hardware Accelerators for Deep Learning', 'label': 'Citing Paper', 'group': 'citing'},
+        {'id': 3, 'name': 'Efficient Neural Network Architectures', 'label': 'Cited Paper', 'group': 'cited'},
+        {'id': 4, 'name': 'Survey of IoT and Machine Learning', 'label': 'Cited Paper', 'group': 'cited'},
+    ]
+    nodes_data.extend(mock_papers)
 
-    if num_nodes > 0:
-        angles = np.linspace(start_angle, end_angle, num_nodes)
-        print(angles)
-        radius = 1 # Distance from the center
+    for mock_paper in mock_papers:
+        edges_data.append({'source': 0, 'target': mock_paper['id']})
 
-        for i, (key, value) in enumerate(sorted_nodes):
-            x = radius * np.cos(angles[i])
-            y = radius * np.sin(angles[i])
-            pos[key] = (x, y)
+    # Prepare data for Plotly
+    node_x = [0, 1, -1, 0.5, -0.5]
+    node_y = [0, 1, 1, -1, -1]
+    
+    edge_x = []
+    edge_y = []
+    for edge in edges_data:
+        x0, y0 = node_x[edge['source']], node_y[edge['source']]
+        x1, y1 = node_x[edge['target']], node_y[edge['target']]
+        edge_x.extend([x0, x1, None])
+        edge_y.extend([y0, y1, None])
 
-    if related_nodes:
-        min_val = min(related_nodes.values())
-        max_val = max(related_nodes.values())
-        norm = plt.Normalize(vmin=min_val, vmax=max_val)
+    # Create the figure
+    fig = go.Figure()
 
-    for key, value in sorted_nodes:
-        node_size = 500 * value + 300
-        G.add_node(key, size=node_size, color= 'gray', edgecolor='black')
-        G.add_edge(central_node, key, weight=value)
+    # Add edges
+    fig.add_trace(go.Scatter(
+        x=edge_x, y=edge_y,
+        mode='lines',
+        line=dict(width=0.5, color='#888'),
+        hoverinfo='none'
+    ))
 
+    # Add nodes
+    fig.add_trace(go.Scatter(
+        x=node_x, y=node_y,
+        mode='markers+text',
+        name='Papers',
+        marker=dict(
+            symbol='circle',
+            size=[25, 15, 15, 15, 15],
+            color=['rgba(175, 55, 202, 0.8)', 'rgba(55, 175, 202, 0.8)', 'rgba(55, 175, 202, 0.8)', 'rgba(255, 140, 0, 0.8)', 'rgba(255, 140, 0, 0.8)']
+        ),
+        text=[node['name'] for node in nodes_data],
+        textposition='top center',
+        textfont=dict(size=10),
+        hovertemplate='<b>%{text}</b><br><i>%{customdata}</i><extra></extra>',
+        customdata=[node['label'] for node in nodes_data]
+    ))
+    
+    # Configure the plot layout
+    fig.update_layout(
+        showlegend=False,
+        hovermode='closest',
+        plot_bgcolor='white',
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
+    )
 
-    return [G,pos]
+    st.plotly_chart(fig, use_container_width=True)
 
-def plot_influence_flower(G, pos:list[int]):
-    node_sizes = [G.nodes[n]['size'] for n in G.nodes]
-    node_colors = [G.nodes[n].get('color', 'gray') for n in G.nodes]
-    node_edge_colors = [G.nodes[n].get('edgecolor', 'black') for n in G.nodes]
-
-    fig, ax = plt.subplots(figsize=(12, 12))
-
-    nx.draw_networkx_nodes(G, pos, node_size=node_sizes, node_color=node_colors, edgecolors=node_edge_colors, ax=ax)
-    nx.draw_networkx_labels(G, pos, font_size=10, font_family='sans-serif', font_weight='bold', ax=ax)
-    for u, v, d in G.edges(data=True):
-        weight = d['weight']
-        # Use hexadecimal color codes for edge_color
-        edge_color = "#CD5C5C" if weight > 2 else "#A9CCE3" # Light red (IndianRed) vs. light blue (LightSteelBlue)
-        nx.draw_networkx_edges(G, pos, edgelist=[(u, v)], width=weight, edge_color=edge_color, alpha=0.7, ax=ax)
-
-    ax.set_facecolor("#F0F2F6") # Light background for the plot area
-    ax.set_xticks([])
-    ax.set_yticks([])
-    plt.tight_layout()
-    return [fig,ax]
-
-
-# def embed(input):
-#   return model(input)
-
-# def toVector(vec):
-#    return vec.numpy().tolist()
-
-# def compute_similarity_score(vec1: list, vec2: list):
-#     total = 0
-#     for i in range(0,512):
-#        total += vec1[i]*vec2[i] 
-#     return total 
-
-
+# Sidebar navigation
+st.sidebar.title("PaperRank")
+st.sidebar.markdown("---")
+page = st.sidebar.selectbox(
+    "Choose a page",
+    ["🔍 Find Papers", "🎯 Get Recommendations", "Author Spotlight"]
+)

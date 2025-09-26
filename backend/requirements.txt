@@ -10,6 +10,5 @@ asyncio
 certifi
 httpx
 numpy
-bigquery
-# scikit-learn==1.5.0 # For sklearn, ensure specific version, e.g., 1.5.0
-tensorflow-hub
+google-cloud-bigquery
+

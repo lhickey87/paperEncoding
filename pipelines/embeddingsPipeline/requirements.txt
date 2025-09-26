@@ -1,0 +1,7 @@
+   sentence-transformers==2.2.2
+   smart-open[gcs]==6.4.0
+   google-cloud-storage==2.10.0
+   google-cloud-bigquery==3.13.0
+   pyarrow==14.0.1
+   numpy==1.24.3
+   torch==2.0.1+cpu
