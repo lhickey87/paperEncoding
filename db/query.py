@@ -110,7 +110,7 @@ def titledPaper(title: str):
             t.doi,
             t.authors
         FROM
-            `hazel-quanta-470113-h4.openAlexDataset.EWORKS` AS t
+            `hazel-quanta-470113-h4.openAlexDataset.EWORKS_TEST` AS t
         WHERE
             LOWER(t.title) LIKE LOWER(CONCAT('%', @title, '%'))
         LIMIT 10
